@@ -25,7 +25,11 @@ import android.view.View;
 import android.widget.Toast;
 
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.PriorityQueue;
 import java.util.Random;
+
+import static java.util.Collections.reverse;
 
 public class PuzzleBoardView extends View {
     public static final int NUM_SHUFFLE_STEPS = 40;
@@ -67,11 +71,12 @@ public class PuzzleBoardView extends View {
     }
 
     public void shuffle() {
-        if (animation == null && puzzleBoard != null) {
+        if (puzzleBoard != null) {
             for (int i = 0; i < NUM_SHUFFLE_STEPS; i++) {
                 ArrayList<PuzzleBoard> neighbors = puzzleBoard.neighbours();
                 puzzleBoard = neighbors.get(random.nextInt(neighbors.size()));
             }
+            animation = null;
             puzzleBoard.reset();
             invalidate();
         }
@@ -95,6 +100,61 @@ public class PuzzleBoardView extends View {
         return super.onTouchEvent(event);
     }
 
-    public void solve() {
+    static class PuzzleBoardComparator implements Comparator<PuzzleBoard>
+    {
+        @Override
+        public int compare(PuzzleBoard x, PuzzleBoard y)
+        {
+            if (x.priority() < y.priority())
+            {
+                return -1;
+            }
+            if (x.priority() > y.priority())
+            {
+                return 1;
+            }
+            return 0;
+        }
     }
+
+    public void solve() {
+        if (puzzleBoard != null) {
+            Comparator<PuzzleBoard> comparator = new PuzzleBoardComparator();
+            PriorityQueue<PuzzleBoard> puzzleBoardQueue = new PriorityQueue<>(11, comparator);
+
+            puzzleBoard.reset();
+            puzzleBoardQueue.add(puzzleBoard);
+
+            while (!puzzleBoardQueue.isEmpty()) {
+                PuzzleBoard currBoard = puzzleBoardQueue.poll();
+                PuzzleBoard prevBoard = currBoard.getPreviousBoard();
+
+                if (currBoard.resolved()) {
+                    ArrayList<PuzzleBoard> solution = new ArrayList<>();
+                    solution.add(currBoard);
+
+                    while(prevBoard != null) {
+                        solution.add(prevBoard);
+                        currBoard = prevBoard;
+                        prevBoard = currBoard.getPreviousBoard();
+                    }
+
+                    reverse(solution);
+                    animation = solution;
+                    invalidate();
+                    break;
+                } else {
+                    ArrayList<PuzzleBoard> neighborBoards = currBoard.neighbours();
+                    for (int i = 0; i < neighborBoards.size(); i++) {
+                        PuzzleBoard neighborBoard = neighborBoards.get(i);
+                        if (neighborBoard.equals(prevBoard)) {
+                            continue;
+                        }
+                        puzzleBoardQueue.add(neighborBoard);
+                    }
+                }
+            }
+        }
+    }
+
 }

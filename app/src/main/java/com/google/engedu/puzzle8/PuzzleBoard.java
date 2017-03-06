@@ -32,14 +32,22 @@ public class PuzzleBoard {
             { 0, 1 }
     };
     private ArrayList<PuzzleTile> tiles;
+    private int steps;
+    private PuzzleBoard previousBoard;
 
     PuzzleBoard(Bitmap bitmap, int parentWidth) {
-        Bitmap scaledBitmap = Bitmap.createScaledBitmap(bitmap, parentWidth, parentWidth, false);
+        steps = 0;
+        int size = bitmap.getWidth();
+        if (size > bitmap.getHeight()) {
+            size = bitmap.getHeight();
+        }
+        Bitmap squareBitmap = Bitmap.createBitmap(bitmap, 0, 0, size, size);
+        Bitmap scaledBitmap = Bitmap.createScaledBitmap(squareBitmap, parentWidth, parentWidth, false);
         int width = parentWidth / NUM_TILES;
         tiles = new ArrayList<>();
         for (int r = 0; r < NUM_TILES; r++) {
             for (int c = 0; c < NUM_TILES; c++) {
-                Bitmap chunk = Bitmap.createBitmap(scaledBitmap, r * width, c * width, width, width);
+                Bitmap chunk = Bitmap.createBitmap(scaledBitmap, c * width, r * width, width, width);
                 PuzzleTile tile = new PuzzleTile(chunk, r * NUM_TILES + c);
                 tiles.add(tile);
             }
@@ -52,10 +60,17 @@ public class PuzzleBoard {
 
     PuzzleBoard(PuzzleBoard otherBoard) {
         tiles = (ArrayList<PuzzleTile>) otherBoard.tiles.clone();
+        steps = otherBoard.steps += 1;
+        previousBoard = otherBoard;
     }
 
     public void reset() {
-        // Nothing for now but you may have things to reset once you implement the solver.
+        steps = 0;
+        previousBoard = null;
+    }
+
+    public PuzzleBoard getPreviousBoard() {
+        return previousBoard;
     }
 
     @Override
@@ -154,7 +169,23 @@ public class PuzzleBoard {
     }
 
     public int priority() {
-        return 0;
+        int manhattanDistance = 0;
+        for (int i = 0; i < NUM_TILES * NUM_TILES; i++) {
+            int currR = i / NUM_TILES;
+            int currC = i % NUM_TILES;
+
+            int tileNum;
+            if (tiles.get(i) == null) {
+                tileNum = NUM_TILES * NUM_TILES - 1;
+            } else {
+                tileNum = tiles.get(i).getNumber();
+            }
+            int goalR = tileNum / NUM_TILES;
+            int goalC = tileNum % NUM_TILES;
+
+            manhattanDistance += Math.abs(currR - goalR) + Math.abs(currC - goalC);
+        }
+        return manhattanDistance + steps;
     }
 
 }
